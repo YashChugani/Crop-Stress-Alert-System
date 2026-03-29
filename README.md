@@ -5,7 +5,8 @@ An enterprise-grade, serverless Decision Support System (DSS) designed to help f
 ---
 
 ## 🚀 Live Demo
-**Frontend Hosted on AWS Amplify:** [https://dev.dyl92v2uf6oaj.amplifyapp.com]
+**Frontend Hosted on AWS Amplify:** [Project Link](https://dev.dyl92v2uf6oaj.amplifyapp.com)
+*(Note: This live demo is hosted on AWS Free Tier and may become unavailable after the free tier period expires. If the link is down, please see the Local Setup instructions below.)*
 
 ---
 
@@ -55,25 +56,25 @@ This project implements a fully serverless cloud architecture on Amazon Web Serv
 
 The predictive engine of this application is powered by a custom-trained Machine Learning model designed to analyze environmental and agronomic factors to determine crop stress levels.
 
-* [cite_start]**Algorithm:** Random Forest Classifier [cite: 1]
-* [cite_start]**Dataset Size:** 915 agricultural records [cite: 1]
-* [cite_start]**Data Split:** 80% Training (732 records) / 20% Testing (183 records) [cite: 1]
-* [cite_start]**Overall Accuracy:** 97.27% [cite: 1]
+* **Algorithm:** Random Forest Classifier
+* **Dataset Size:** 915 agricultural records
+* **Data Split:** 80% Training (732 records) / 20% Testing (183 records)
+* **Overall Accuracy:** 97.27%
 
 ### Model Performance Metrics
 The model classifies crop stress into three distinct categories with high reliability:
-* [cite_start]**Low Stress:** 99% F1-Score [cite: 2]
-* [cite_start]**Medium Stress:** 96% F1-Score [cite: 2]
-* [cite_start]**High Stress:** 95% F1-Score [cite: 1]
+* **Low Stress:** 99% F1-Score
+* **Medium Stress:** 96% F1-Score
+* **High Stress:** 95% F1-Score
 
 ### Key Predictive Features (Feature Importance)
 The model's decision-making process is primarily driven by the following environmental and temporal factors:
-1. [cite_start]**Maximum Temperature (`temperature_2m_max`):** 45.75% importance [cite: 4]
-2. [cite_start]**Rainfall (`rain`):** 23.58% importance [cite: 4]
-3. [cite_start]**Minimum Temperature (`temperature_2m_min`):** 12.98% importance [cite: 4]
-4. [cite_start]**Crop Age (`days_since_sowing`):** 7.31% importance [cite: 4]
+1. **Maximum Temperature (`temperature_2m_max`):** 45.75% importance
+2. **Rainfall (`rain`):** 23.58% importance
+3. **Minimum Temperature (`temperature_2m_min`):** 12.98% importance
+4. **Crop Age (`days_since_sowing`):** 7.31% importance
 
-[cite_start]*(Note: Categorical features like Crop Type and Growth Stage were one-hot encoded for model training[cite: 4, 5].)*
+*(Note: Categorical features like Crop Type and Growth Stage were one-hot encoded for model training.)*
 
 ---
 
@@ -111,6 +112,6 @@ The model's decision-making process is primarily driven by the following environ
 ## 👨‍💻 Contributors
 
 * **Yash Chugani** - *System Architecture, ML Integration, & Full-Stack Development*
-* • [GitHub](https://github.com/YashChugani) *
+* [GitHub](https://github.com/YashChugani)
 
 ---
