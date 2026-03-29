@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Stress Intelligence</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+</head>
+<body>
+
+    <div id="authView" class="container">
+        <h2>🌱 Farmer Login</h2>
+        <p class="subtitle">Secure Decision Support System</p>
+        
+        <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="emailInput" placeholder="farmer@example.com">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="passwordInput" placeholder="••••••••">
+        </div>
+
+        <button onclick="login()">Log In</button>
+        <button class="secondary" onclick="signUp()">Create Account</button>
+        
+        <div id="authMessage" class="loader hidden"></div>
+    </div>
+
+    <div id="verifyView" class="container hidden">
+        <h2>Verify Email</h2>
+        <p class="subtitle">Check your email for the 6-digit AWS code.</p>
+        <div class="form-group">
+            <input type="text" id="verifyCodeInput" placeholder="123456">
+        </div>
+        <button onclick="verifyCode()">Verify & Login</button>
+    </div>
+
+    <div id="dashboardView" class="container hidden">
+        <h2>🌱 My Farm Dashboard</h2>
+        <p class="subtitle">Select a field to analyze or add a new one.</p>
+        
+        <div id="cropList" class="crop-list">
+            </div>
+
+        <button onclick="showAddCropView()">+ Add New Field</button>
+        <button class="secondary" onclick="logout()" style="margin-top: 15px;">Log Out</button>
+    </div>
+
+    <div id="addCropView" class="container hidden">
+        <h2>➕ Register New Field</h2>
+        <p class="subtitle">Enter the agronomic details below.</p>
+        
+        <div class="form-group">
+            <label>Field Name (e.g., North Plot)</label>
+            <input type="text" id="newCropId" placeholder="Enter field name">
+        </div>
+        <div class="form-group">
+            <label>Crop Type</label>
+            <select id="newCropType" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 1em;">
+                <option value="Wheat">Wheat</option>
+                <option value="Maize">Maize</option>
+                <option value="Rice">Rice</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Sowing Date</label>
+            <input type="date" id="newSowingDate">
+        </div>
+
+        <button onclick="saveNewCrop()">Save Field</button>
+        <button class="secondary" onclick="showDashboard()">Cancel</button>
+    </div>
+
+    <div id="detailView" class="container hidden">
+        <h2 id="detailTitle">🌱 Field Analysis</h2>
+        <p class="subtitle">Enter today's weather to run Cloud AI.</p>
+        
+        <input type="hidden" id="activeCropId">
+
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Max Temp (°C)</label>
+                <input type="number" id="tempMax" step="0.1">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Rain (mm)</label>
+                <input type="number" id="rain" step="0.1">
+            </div>
+        </div>
+
+        <button onclick="runPrediction()">Analyze Weather</button>
+        <button class="secondary" onclick="showDashboard()">Back to Dashboard</button>
+        
+        <div id="apiLoader" class="loader hidden">Analyzing with Cloud AI...</div>
+
+        <div id="resultBox" class="result-box hidden">
+            <h3 id="stressText"></h3>
+            <p><strong>Stage:</strong> <span id="stageText"></span> | <strong>Age:</strong> <span id="ageText"></span> days</p>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

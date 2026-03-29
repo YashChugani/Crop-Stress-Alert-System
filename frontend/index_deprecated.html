@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Stress Intelligence Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .dashboard-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+        h2 {
+            color: #2c3e50;
+            text-align: center;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #219150;
+        }
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            text-align: center;
+        }
+        .result-box h3 { margin: 0 0 10px 0; }
+        
+        /* Dynamic Stress Colors */
+        .stress-Low { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .stress-Medium { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .stress-High { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        
+        .loader {
+            text-align: center;
+            display: none;
+            color: #666;
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-card">
+        <h2>🌱 Crop Stress Monitor</h2>
+        <p style="text-align: center; font-size: 0.9em; color: #666;">Enter today's weather to run a cloud-based ML prediction.</p>
+        
+        <div class="form-group">
+            <label>User ID (From Database)</label>
+            <input type="text" id="userId" value="test-user-1">
+        </div>
+        <div class="form-group">
+            <label>Field/Crop ID</label>
+            <input type="text" id="cropId" value="field-A">
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+        <div class="form-group">
+            <label>Max Temperature (°C)</label>
+            <input type="number" id="tempMax" step="0.1" placeholder="e.g. 38.5">
+        </div>
+        <div class="form-group">
+            <label>Min Temperature (°C)</label>
+            <input type="number" id="tempMin" step="0.1" placeholder="e.g. 25.0">
+        </div>
+        <div class="form-group">
+            <label>Rainfall (mm)</label>
+            <input type="number" id="rain" step="0.1" placeholder="e.g. 0.0">
+        </div>
+
+        <button onclick="runPrediction()">Analyze Crop Stress</button>
+        
+        <div class="loader" id="loader">Communicating with AWS Cloud...</div>
+
+        <div id="resultBox" class="result-box">
+            <h3 id="stressText">Stress Level: </h3>
+            <p><strong>Growth Stage:</strong> <span id="stageText"></span></p>
+            <p><strong>Age:</strong> <span id="ageText"></span> days</p>
+        </div>
+    </div>
+
+    <script>
+        async function runPrediction() {
+            // 1. Show loader, hide old results
+            document.getElementById('loader').style.display = 'block';
+            const resultBox = document.getElementById('resultBox');
+            resultBox.style.display = 'none';
+            resultBox.className = 'result-box'; // reset classes
+            
+            // 2. The API Gateway URL
+            const apiUrl = "https://vja81okuxk.execute-api.ap-south-1.amazonaws.com/dev/predict";
+
+            // 3. Gather data from the form
+            const payload = {
+                userId: document.getElementById('userId').value,
+                cropId: document.getElementById('cropId').value,
+                temperature_2m_max: parseFloat(document.getElementById('tempMax').value),
+                temperature_2m_min: parseFloat(document.getElementById('tempMin').value),
+                rain: parseFloat(document.getElementById('rain').value)
+            };
+
+            try {
+                // 4. Send POST request to AWS
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                document.getElementById('loader').style.display = 'none';
+
+                if (response.ok) {
+                    // 5. Update UI with results
+                    document.getElementById('stressText').innerText = `Stress Level: ${data.stress_level}`;
+                    document.getElementById('stageText').innerText = data.growth_stage;
+                    document.getElementById('ageText').innerText = data.days_since_sowing;
+
+                    // Add color coding based on stress
+                    resultBox.classList.add(`stress-${data.stress_level}`);
+                    resultBox.style.display = 'block';
+                } else {
+                    alert("Error from Cloud: " + (data.error || "Unknown Error"));
+                }
+
+            } catch (error) {
+                document.getElementById('loader').style.display = 'none';
+                alert("Failed to connect to AWS. Check your internet or API Gateway settings.");
+                console.error(error);
+            }
+        }
+    </script>
+</body>
+</html>
