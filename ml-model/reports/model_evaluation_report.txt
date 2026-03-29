@@ -1,0 +1,41 @@
+====================================================
+ MACHINE LEARNING MODEL EVALUATION REPORT
+====================================================
+Date Generated: 2026-03-29 16:57:37
+Model Type: Random Forest Classifier
+Dataset Size: 915 records
+Training Split: 80% (732 records)
+Testing Split: 20% (183 records)
+----------------------------------------------------
+
+OVERALL ACCURACY: 97.27%
+
+CLASSIFICATION REPORT:
+              precision    recall  f1-score   support
+
+        High       1.00      0.90      0.95        50
+         Low       0.99      1.00      0.99        89
+      Medium       0.92      1.00      0.96        44
+
+    accuracy                           0.97       183
+   macro avg       0.97      0.97      0.97       183
+weighted avg       0.97      0.97      0.97       183
+
+
+FEATURE IMPORTANCE (What drove the predictions?):
+                Feature  Importance
+     temperature_2m_max    0.457592
+                   rain    0.235803
+     temperature_2m_min    0.129833
+      days_since_sowing    0.073199
+        crop_type_Wheat    0.035075
+        crop_type_Maize    0.025596
+         crop_type_Rice    0.016680
+growth_stage_Vegetative    0.009548
+ growth_stage_Flowering    0.009321
+  growth_stage_Maturity    0.007354
+
+====================================================
+Notes for Documentation:
+- The model relies heavily on the top features listed above.
+- '1' in encoded categorical columns indicates presence, '0' indicates absence.
