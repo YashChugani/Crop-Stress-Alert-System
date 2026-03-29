@@ -5,7 +5,7 @@ An enterprise-grade, serverless Decision Support System (DSS) designed to help f
 ---
 
 ## 🚀 Live Demo
-**Frontend Hosted on AWS Amplify:** [Project Link](https://dev.dyl92v2uf6oaj.amplifyapp.com)
+**Frontend Hosted on AWS Amplify:** [Project Link](https://dev.dyl92v2uf6oaj.amplifyapp.com)  
 *(Note: This live demo is hosted on AWS Free Tier and may become unavailable after the free tier period expires. If the link is down, please see the Local Setup instructions below.)*
 
 ---
