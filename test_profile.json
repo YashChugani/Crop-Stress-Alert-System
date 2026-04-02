@@ -1,6 +1,0 @@
-{
-    "userId": {"S": "test-user-1"},
-    "cropId": {"S": "field-A"},
-    "cropType": {"S": "Wheat"},
-    "sowingDate": {"S": "2026-02-15"}
-}

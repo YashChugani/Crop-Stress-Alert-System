@@ -81,11 +81,60 @@ function login() {
 }
 
 // 4. LOG OUT
-// 4. LOG OUT
 function logout() {
     if (cognitoUser) cognitoUser.signOut();
     userJwtToken = null;
     document.getElementById('emailInput').value = '';
     document.getElementById('passwordInput').value = '';
     switchView('authView'); 
+}
+
+// --- NEW: FORGOT PASSWORD FLOW ---
+
+function showForgotPassword() {
+    document.getElementById('resetEmail').value = '';
+    document.getElementById('resetCode').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('resetConfirmSection').classList.add('hidden');
+    switchView('forgotPasswordView');
+}
+
+function requestPasswordReset() {
+    const email = document.getElementById('resetEmail').value;
+    if (!email) return alert("Please enter your email address.");
+
+    const userData = { Username: email, Pool: userPool };
+    cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+
+    // Call Cognito to send the 6-digit code
+    cognitoUser.forgotPassword({
+        onSuccess: function (data) {
+            console.log('Password reset requested.');
+        },
+        onFailure: function (err) {
+            alert(err.message || JSON.stringify(err));
+        },
+        inputVerificationCode: function (data) {
+            alert('Verification code sent to your email!');
+            document.getElementById('resetConfirmSection').classList.remove('hidden');
+        }
+    });
+}
+
+function confirmPasswordReset() {
+    const code = document.getElementById('resetCode').value;
+    const newPassword = document.getElementById('newPassword').value;
+    
+    if (!code || !newPassword) return alert("Please enter both the code and your new password.");
+
+    // Call Cognito to apply the new password using the verified code
+    cognitoUser.confirmPassword(code, newPassword, {
+        onSuccess: function () {
+            alert('Password reset successful! Please log in with your new password.');
+            switchView('authView');
+        },
+        onFailure: function (err) {
+            alert(err.message || JSON.stringify(err));
+        }
+    });
 }

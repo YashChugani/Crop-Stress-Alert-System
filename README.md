@@ -37,18 +37,19 @@ This project implements a fully serverless cloud architecture on Amazon Web Serv
 * **Implementation:** A highly scalable NoSQL table (`CropProfiles`) that securely maps individual fields (crop type, sowing date) to verified Cognito User IDs.
 
 ### **Automation & Alerts (The "Invisible Guardian")**
-* **Tech:** Amazon EventBridge, AWS Lambda, Amazon SNS, Open-Meteo API
-* **Implementation:** A scheduled EventBridge cron job wakes up a dedicated Lambda function daily at 6:30 AM IST. It fetches live weather forecasts for the region, scans the database, runs the ML model against every registered field, and triggers an Amazon SNS email alert to the farmer if "High" stress is detected.
+* **Tech:** Amazon EventBridge, AWS Lambda, Amazon SES, Open-Meteo API
+* **Implementation:** A scheduled EventBridge cron job wakes up a dedicated Lambda function daily at 6:30 AM IST. It fetches live weather forecasts, scans the active database, runs the ML model against every registered field, and appends the daily result to a historical database array. If "High" stress is detected, it triggers a personalized Amazon SES (Simple Email Service) email alert to the farmer.
 
 ---
 
 ## ✨ Key Features
 
-1. **Secure Multi-Tenant Dashboard:** Farmers can securely log in and manage their specific fields without seeing other users' data.
-2. **Dynamic Agronomic Calculations:** The system automatically calculates crop age (days since sowing) and current growth stage (Vegetative, Flowering, Maturity) in real-time.
-3. **On-Demand ML Analysis:** Users can manually input extreme weather scenarios to simulate how their crops will react.
-4. **Proactive Daily Monitoring:** Completely automated background processing that monitors weather forecasts without requiring the user to open the app.
-5. **Emergency Notifications:** Push alerts delivered directly to the farmer's inbox when dangerous weather combinations threaten sensitive crop stages.
+1. **Secure Multi-Tenant Dashboard:** Farmers securely log in, recover forgotten passwords via Cognito verification codes, and manage their specific fields without seeing other users' data.
+2. **Historical Trend Visualization:** The app retroactively builds and visualizes a 90-day crop stress history using **Chart.js**, giving farmers a complete timeline of their crop's health.
+3. **Full Data Lifecycle (CRUD):** Built-in duplicate name protection, the ability to permanently delete typos, and a "Mark as Harvested" feature that moves successful crops into a read-only historical archive.
+4. **Dynamic Agronomic Calculations:** The system automatically calculates crop age (days since sowing) and current growth stage in real-time.
+5. **Hybrid AI & Heuristic Analysis:** Users can manually input extreme weather scenarios to simulate how their crops will react. The AI is protected by physiological guardrails to catch impossible out-of-distribution extremes (e.g., severe frost or floods).
+6. **Proactive Daily Monitoring & Alerts:** Completely automated background processing monitors weather forecasts and delivers personalized email alerts directly to the farmer's inbox when dangerous weather combinations threaten sensitive crop stages.
 
 ---
 
@@ -75,6 +76,10 @@ The model's decision-making process is primarily driven by the following environ
 4. **Crop Age (`days_since_sowing`):** 7.31% importance
 
 *(Note: Categorical features like Crop Type and Growth Stage were one-hot encoded for model training.)*
+
+### Hybrid AI Architecture (Heuristic Guardrails)
+To prevent "Out-of-Distribution" (OOD) errors common in Machine Learning, this system employs a Hybrid Architecture. The Java backend intercepts the weather payload before it reaches the Random Forest model and applies strict physiological heuristic guardrails. 
+If an extreme weather event occurs that falls outside the model's tropical training data (e.g., temperatures dropping below 10°C or rainfall exceeding 150mm/day), the API safely overrides the AI and instantly flags the field for High Stress (Frost or Flood risk), ensuring 100% real-world reliability.
 
 ---
 

@@ -6,6 +6,7 @@
     <title>Crop Stress Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -13,19 +14,50 @@
         <h2>🌱 Farmer Login</h2>
         <p class="subtitle">Secure Decision Support System</p>
         
-        <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" id="emailInput" placeholder="farmer@example.com">
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="passwordInput" placeholder="••••••••">
-        </div>
+        <form id="loginForm" onsubmit="event.preventDefault(); login();">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="emailInput" placeholder="farmer@example.com" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="passwordInput" placeholder="••••••••" required>
+            </div>
 
-        <button onclick="login()">Log In</button>
+            <button type="submit">Log In</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 15px; margin-bottom: 5px;">
+            <a href="#" onclick="showForgotPassword()" style="color: #2e7d32; font-size: 0.9em; text-decoration: none;">Forgot Password?</a>
+        </p>
+
         <button class="secondary" onclick="signUp()">Create Account</button>
         
         <div id="authMessage" class="loader hidden"></div>
+    </div>
+
+    <div id="forgotPasswordView" class="container hidden">
+        <h2>Reset Password</h2>
+        <p class="subtitle">Enter your email to receive a reset code.</p>
+        
+        <div class="form-group">
+            <input type="email" id="resetEmail" placeholder="farmer@example.com">
+        </div>
+        <button onclick="requestPasswordReset()">Send Code</button>
+        
+        <div id="resetConfirmSection" class="hidden" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+            <div class="form-group">
+                <label>Verification Code</label>
+                <input type="text" id="resetCode" placeholder="Enter 6-digit code">
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password">
+            </div>
+            <button onclick="confirmPasswordReset()">Confirm New Password</button>
+        </div>
+        
+        <button class="secondary" onclick="switchView('authView')" style="margin-top: 10px;">Back to Login</button>
     </div>
 
     <div id="verifyView" class="container hidden">
@@ -41,6 +73,13 @@
         <h2>🌱 My Farm Dashboard</h2>
         <p class="subtitle">Select a field to analyze or add a new one.</p>
         
+        <div id="weatherBannerContainer"></div>
+        
+        <div class="tab-container">
+            <button id="tabActive" class="tab-btn active-tab" onclick="switchDashboardTab('ACTIVE')">Active Fields</button>
+            <button id="tabHarvested" class="tab-btn inactive-tab" onclick="switchDashboardTab('HARVESTED')">Harvested Archive</button>
+        </div>
+
         <div id="cropList" class="crop-list">
             </div>
 
@@ -66,7 +105,7 @@
         </div>
         <div class="form-group">
             <label>Sowing Date</label>
-            <input type="date" id="newSowingDate">
+            <input type="date" id="newSowingDate" max="" onfocus="this.max=new Date().toISOString().split('T')[0]">
         </div>
 
         <button onclick="saveNewCrop()">Save Field</button>
@@ -75,7 +114,7 @@
 
     <div id="detailView" class="container hidden">
         <h2 id="detailTitle">🌱 Field Analysis</h2>
-        <p class="subtitle">Enter today's weather to run Cloud AI.</p>
+        <p class="subtitle">Simulate scenarios or view historical trends.</p>
         
         <input type="hidden" id="activeCropId">
 
@@ -90,7 +129,7 @@
             </div>
         </div>
 
-        <button onclick="runPrediction()">Analyze Weather</button>
+        <button onclick="runPrediction()">Run AI Analysis</button>
         <button class="secondary" onclick="showDashboard()">Back to Dashboard</button>
         
         <div id="apiLoader" class="loader hidden">Analyzing with Cloud AI...</div>
@@ -99,6 +138,17 @@
             <h3 id="stressText"></h3>
             <p><strong>Stage:</strong> <span id="stageText"></span> | <strong>Age:</strong> <span id="ageText"></span> days</p>
         </div>
+
+        <div id="chartContainer" class="chart-container hidden">
+            <h4>📈 Historical Stress Trend</h4>
+            <canvas id="stressChart"></canvas>
+        </div>
+
+        <div id="fieldActionButtons" style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; display: flex; gap: 10px;">
+            <button class="secondary action-harvest" onclick="markHarvested()" style="flex: 1; border-color: #f57c00; color: #f57c00;">Mark Harvested</button>
+            <button class="secondary action-delete" onclick="deleteField()" style="flex: 1; border-color: #d32f2f; color: #d32f2f;">Delete Field</button>
+        </div>
+
     </div>
 
     <script src="auth.js"></script>

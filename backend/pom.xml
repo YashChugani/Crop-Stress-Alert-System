@@ -38,6 +38,11 @@
             <artifactId>sns</artifactId>
             <version>2.20.162</version>
         </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ses</artifactId>
+            <version>2.20.43</version>
+        </dependency>
     </dependencies>
 
     <build>

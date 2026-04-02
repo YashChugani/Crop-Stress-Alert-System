@@ -8,33 +8,30 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-import software.amazon.awssdk.services.dynamodb.model.ScanRequest;
-import software.amazon.awssdk.services.dynamodb.model.ScanResponse;
-import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
+import software.amazon.awssdk.services.dynamodb.model.*;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.*;
 
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.Map;
 
-// We use ScheduledEvent because this is triggered by a Cloud Timer, not an API Gateway web request
 public class CropStressAutomationHandler implements RequestHandler<ScheduledEvent, String> {
 
     private final DynamoDbClient dynamoDb;
-    private final SnsClient snsClient;
+    private final SesClient sesClient;
     private final Gson gson;
     private final String TABLE_NAME = "CropProfiles";
     
-    // YOUR EXACT SNS TOPIC ARN
-    private final String SNS_TOPIC_ARN = "arn:aws:sns:ap-south-1:118690287430:CropStressAlerts";
+    private final String SENDER_EMAIL = "yashchugani494@gmail.com"; 
 
     public CropStressAutomationHandler() {
         this.dynamoDb = DynamoDbClient.builder().region(Region.AP_SOUTH_1).build();
-        this.snsClient = SnsClient.builder().region(Region.AP_SOUTH_1).build();
+        this.sesClient = SesClient.builder().region(Region.AP_SOUTH_1).build();
         this.gson = new Gson();
     }
 
@@ -43,7 +40,7 @@ public class CropStressAutomationHandler implements RequestHandler<ScheduledEven
         context.getLogger().log("Waking up! Starting daily crop stress analysis...\n");
 
         try {
-            // 1. FETCH LIVE WEATHER FROM OPEN-METEO (Using Vellore/Karigiri Coordinates: Lat 12.98, Lon 79.13)
+            // 1. FETCH LIVE WEATHER
             URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=12.98&longitude=79.13&daily=temperature_2m_max,temperature_2m_min,rain_sum&timezone=auto&forecast_days=1");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
@@ -54,19 +51,25 @@ public class CropStressAutomationHandler implements RequestHandler<ScheduledEven
             double tempMax = daily.getAsJsonArray("temperature_2m_max").get(0).getAsDouble();
             double tempMin = daily.getAsJsonArray("temperature_2m_min").get(0).getAsDouble();
             double rain = daily.getAsJsonArray("rain_sum").get(0).getAsDouble();
-            
-            context.getLogger().log(String.format("Today's Forecast - Max: %.1fC, Min: %.1fC, Rain: %.1fmm\n", tempMax, tempMin, rain));
 
-            // 2. SCAN ENTIRE DATABASE FOR ALL FARMER CROPS
+            // 2. SCAN DATABASE
             ScanRequest scanReq = ScanRequest.builder().tableName(TABLE_NAME).build();
             ScanResponse scanRes = dynamoDb.scan(scanReq);
 
-            // 3. RUN ML MODEL FOR EACH CROP
+            // 3. EVALUATE & EMAIL SPECIFIC USERS
             for (Map<String, AttributeValue> item : scanRes.items()) {
-                String userId = item.get("userId").s();
                 String cropId = item.get("cropId").s();
                 String cropType = item.get("cropType").s();
                 LocalDate sowingDate = LocalDate.parse(item.get("sowingDate").s());
+                
+                // Skip legacy database items safely
+                if (!item.containsKey("farmerEmail")) continue;
+                String recipientEmail = item.get("farmerEmail").s();
+                
+                // NEW: Skip crops that are already harvested!
+                if (item.containsKey("status") && "HARVESTED".equals(item.get("status").s())) {
+                    continue; 
+                }
                 
                 long daysSinceSowing = ChronoUnit.DAYS.between(sowingDate, LocalDate.now());
                 String growthStage = calculateGrowthStage(daysSinceSowing);
@@ -75,29 +78,50 @@ public class CropStressAutomationHandler implements RequestHandler<ScheduledEven
                 int winningClassIndex = getArgMax(CropStressPredictor.score(mlInput));
                 String stressLevel = mapPredictionToLabel(winningClassIndex);
 
-                context.getLogger().log(String.format("Analyzed %s (%s): %s Stress\n", cropId, cropType, stressLevel));
+                // NEW: Update DynamoDB with today's historical record
+                try {
+                    String historyStr = item.containsKey("stressHistory") ? item.get("stressHistory").s() : "[]";
+                    JsonArray historyArray = gson.fromJson(historyStr, JsonArray.class);
+                    
+                    JsonObject todayRecord = new JsonObject();
+                    todayRecord.addProperty("date", LocalDate.now().toString());
+                    todayRecord.addProperty("stress", stressLevel);
+                    historyArray.add(todayRecord);
 
-                // 4. TRIGGER SNS ALERT IF STRESS IS HIGH
+                    Map<String, AttributeValue> key = new HashMap<>();
+                    key.put("userId", item.get("userId"));
+                    key.put("cropId", item.get("cropId"));
+
+                    Map<String, AttributeValueUpdate> updates = new HashMap<>();
+                    updates.put("stressHistory", AttributeValueUpdate.builder()
+                            .value(AttributeValue.builder().s(gson.toJson(historyArray)).build())
+                            .action(AttributeAction.PUT)
+                            .build());
+
+                    dynamoDb.updateItem(UpdateItemRequest.builder()
+                            .tableName(TABLE_NAME)
+                            .key(key)
+                            .attributeUpdates(updates)
+                            .build());
+                    context.getLogger().log("Updated history for " + cropId + "\n");
+                } catch (Exception e) {
+                    context.getLogger().log("Warning: Failed to update history for " + cropId + ": " + e.getMessage());
+                }
+
                 if ("High".equals(stressLevel)) {
-                    String alertMessage = String.format(
-                        "⚠️ HIGH CROP STRESS ALERT ⚠️\n\n" +
-                        "Field: %s\n" +
+                    String subject = "⚠️ Urgent: High Crop Stress Detected - " + cropId;
+                    String bodyText = String.format(
+                        "Dear Farmer,\n\n" +
+                        "Our Cloud AI has detected HIGH stress conditions for your field: %s.\n\n" +
                         "Crop: %s (Day %d, %s Stage)\n\n" +
                         "Today's Weather Trigger:\n" +
                         "- Max Temp: %.1f°C\n" +
                         "- Rain: %.1f mm\n\n" +
-                        "Action Required: Please check your field for emergency irrigation requirements.",
+                        "Please check your field for emergency irrigation or protective measures.",
                         cropId, cropType, daysSinceSowing, growthStage, tempMax, rain
                     );
 
-                    PublishRequest pubReq = PublishRequest.builder()
-                            .topicArn(SNS_TOPIC_ARN)
-                            .subject("Urgent: High Crop Stress Detected - " + cropId)
-                            .message(alertMessage)
-                            .build();
-                    
-                    snsClient.publish(pubReq);
-                    context.getLogger().log("--> Alert Email Sent to Farmer!\n");
+                    sendPersonalizedEmail(recipientEmail, subject, bodyText, context);
                 }
             }
             return "Daily analysis complete.";
@@ -108,7 +132,25 @@ public class CropStressAutomationHandler implements RequestHandler<ScheduledEven
         }
     }
 
-    // --- HELPER METHODS (Reused from main API) ---
+    private void sendPersonalizedEmail(String recipientEmail, String subject, String bodyText, Context context) {
+        try {
+            SendEmailRequest request = SendEmailRequest.builder()
+                .source(SENDER_EMAIL)
+                .destination(Destination.builder().toAddresses(recipientEmail).build())
+                .message(Message.builder()
+                    .subject(Content.builder().data(subject).build())
+                    .body(Body.builder().text(Content.builder().data(bodyText).build()).build())
+                    .build()
+                ).build();
+
+            sesClient.sendEmail(request);
+            context.getLogger().log("--> Secure Personalized Email Sent to: " + recipientEmail + "\n");
+        } catch (Exception e) {
+            context.getLogger().log("Failed to send email to " + recipientEmail + " (Are they verified in SES Sandbox?): " + e.getMessage() + "\n");
+        }
+    }
+
+    // --- HELPER METHODS ---
     private String calculateGrowthStage(long days) {
         if (days < 30) return "Vegetative";
         if (days < 75) return "Flowering";
